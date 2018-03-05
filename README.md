@@ -1,0 +1,1 @@
+aion-mining-pool
