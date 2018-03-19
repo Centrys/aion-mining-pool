@@ -15,6 +15,12 @@ This is an Aion mining pool designed to be used in conjunction with the Aion min
   - Included by default with Ubuntu desktop, may need to be installed seperatly in Ubuntu server. 
   - To install: ```sudo apt-get install python2.7 python-dev```
 
+### Debug
+
+In order to debug locally, insert $NODE_DEBUG_OPTION in *scripts* in package.json (result init.js run would look like: node $NODE_DEBUG_OPTION init.js)
+
+> When debugging locally, make sure you start redis before hand (./redis/src/redis-server --daemonize yes)
+
 ### Instructions
 
 - Open 2 terminal windows; using the first window navigate to your Aion kernel.

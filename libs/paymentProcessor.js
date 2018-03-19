@@ -75,7 +75,7 @@ function SetupForPool(logger, poolOptions, setupFinished){
             }, true);
         },
         function(callback){
-            daemon.cmd('getbalance', [], function(result){
+            daemon.cmd('eth_getBalance', [], function(result){
                 if (result.error){
                     callback(true);
                     return;
