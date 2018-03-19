@@ -1,6 +1,6 @@
 {
     "name": "aion-mining-pool",
-    "version": "0.0.1",
+    "version": "0.1.9",
     "description": "pool",
     "keywords": [
         "stratum",
@@ -11,7 +11,7 @@
         "aion"
     ],
     "license": "GPL-2.0",
-    "author": "King Chris",
+    "author": "ross",
     "main": "init.js",
     "bin": {
         "block-notify": "./scripts/blockNotify.js"
@@ -42,5 +42,9 @@
         "gulp-gzip": "*",
         "gulp-tar": "*",
         "moment": "*"
+    },
+    "scripts": {
+        "start": "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/node_modules/stratum-pool/node_modules/equihashverify/build/Release/:$PWD/node_modules/equihashverify/build/Release/ node init.js"
     }
 }
+
