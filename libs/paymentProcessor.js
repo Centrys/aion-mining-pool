@@ -306,7 +306,7 @@ function SetupForPool(logger, poolOptions, setupFinished){
                 redisClient.multi(shareLookups).exec(function(error, allWorkerShares){
                     endRedisTimer();
 
-                    tx.result.miner === poolOptions.addressif (error){
+                    if (error){
                         callback('Check finished - redis error with multi get rounds share');
                         return;
                     }
