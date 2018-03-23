@@ -75,13 +75,14 @@ function SetupForPool(logger, poolOptions, setupFinished){
             }, true);
         },
         function(callback){
-            daemon.cmd('eth_getBalance', [], function(result){
+            daemon.cmd('eth_getBalance', [poolOptions.address], function(result){
                 if (result.error){
                     callback(true);
                     return;
                 }
                 try {
-                    var d = result.data.split('result":')[1].split(',')[0].split('.')[1];
+                    var response = JSON.parse(result.data);
+                    var d = parseInt(response.result, 16);
                     magnitude = parseInt('10' + new Array(d.length).join('0'));
                     minPaymentSatoshis = parseInt(processingConfig.minimumPayment * magnitude);
                     coinPrecision = magnitude.toString().length - 1;
@@ -185,10 +186,10 @@ function SetupForPool(logger, poolOptions, setupFinished){
             function(workers, rounds, callback){
 
                 var batchRPCcommand = rounds.map(function(r){
-                    return ['gettransaction', [r.txHash]];
+                    return ['eth_getBlockByNumber', [r.height]];
                 });
 
-                batchRPCcommand.push(['getaccount', [poolOptions.address]]);
+                // batchRPCcommand.push(['getaccount', [poolOptions.address]]);
 
                 startRPCTimer();
                 daemon.batchCmd(batchRPCcommand, function(error, txDetails){
@@ -203,65 +204,73 @@ function SetupForPool(logger, poolOptions, setupFinished){
 
                     var addressAccount;
 
-                    txDetails.forEach(function(tx, i){
-
-                        if (i === txDetails.length - 1){
-                            addressAccount = tx.result;
-                            return;
-                        }
-
+                    txDetails.forEach(function(tx, i) {
                         var round = rounds[i];
 
-                        if (tx.error && tx.error.code === -5){
-                            logger.warning(logSystem, logComponent, 'Daemon reports invalid transaction: ' + round.txHash);
-                            round.category = 'kicked';
-                            return;
+                        if (tx.result.miner === poolOptions.address) {
+                            round.category = 'generate';
+                            round.reward = 1.5;
                         }
-                        else if (!tx.result.details || (tx.result.details && tx.result.details.length === 0)){
-                            logger.warning(logSystem, logComponent, 'Daemon reports no details for transaction: ' + round.txHash);
-                            round.category = 'kicked';
-                            return;
-                        }
-                        else if (tx.error || !tx.result){
-                            logger.error(logSystem, logComponent, 'Odd error with gettransaction ' + round.txHash + ' '
-                                + JSON.stringify(tx));
-                            return;
-                        }
+                    })
+                        // if (i === txDetails.length - 1){
+                        //     addressAccount = tx.result;
+                        //     return;
+                        // }
 
-                        var generationTx = tx.result.details.filter(function(tx){
-                            return tx.address === poolOptions.address;
-                        })[0];
+                        // var round = rounds[i];
+                        // if (tx.result) {
+                        //     console.log(tx.result);
+                        // }
+                        // if (tx.error && tx.error.code === -5){
+                        //     logger.warning(logSystem, logComponent, 'Daemon reports invalid transaction: ' + round.txHash);
+                        //     round.category = 'kicked';
+                        //     return;
+                        // }
+                        // else if (!tx.result.details || (tx.result.details && tx.result.details.length === 0)){
+                        //     logger.warning(logSystem, logComponent, 'Daemon reports no details for transaction: ' + round.txHash);
+                        //     round.category = 'kicked';
+                        //     return;
+                        // }
+                        // else if (tx.error || !tx.result){
+                        //     logger.error(logSystem, logComponent, 'Odd error with gettransaction ' + round.txHash + ' '
+                        //         + JSON.stringify(tx));
+                        //     return;
+                        // }
 
+                        // var generationTx = tx.result.details.filter(function(tx){
+                        //     return tx.address === poolOptions.address;
+                        // })[0];
+                        //
+                        //
+                        // if (!generationTx && tx.result.details.length === 1){
+                        //     generationTx = tx.result.details[0];
+                        // }
+                        //
+                        // if (!generationTx){
+                        //     logger.error(logSystem, logComponent, 'Missing output details to pool address for transaction '
+                        //         + round.txHash);
+                        //     return;
+                        // }
+                        //
+                        // round.category = generationTx.category;
+                        // if (round.category === 'generate') {
+                        //     round.reward = generationTx.amount || generationTx.value;
+                        // }
 
-                        if (!generationTx && tx.result.details.length === 1){
-                            generationTx = tx.result.details[0];
-                        }
+                    // });
 
-                        if (!generationTx){
-                            logger.error(logSystem, logComponent, 'Missing output details to pool address for transaction '
-                                + round.txHash);
-                            return;
-                        }
-
-                        round.category = generationTx.category;
-                        if (round.category === 'generate') {
-                            round.reward = generationTx.amount || generationTx.value;
-                        }
-
-                    });
-
-                    var canDeleteShares = function(r){
-                        for (var i = 0; i < rounds.length; i++){
-                            var compareR = rounds[i];
-                            if ((compareR.height === r.height)
-                                && (compareR.category !== 'kicked')
-                                && (compareR.category !== 'orphan')
-                                && (compareR.serialized !== r.serialized)){
-                                return false;
-                            }
-                        }
-                        return true;
-                    };
+                    // var canDeleteShares = function(r){
+                    //     for (var i = 0; i < rounds.length; i++){
+                    //         var compareR = rounds[i];
+                    //         if ((compareR.height === r.height)
+                    //             && (compareR.category !== 'kicked')
+                    //             && (compareR.category !== 'orphan')
+                    //             && (compareR.serialized !== r.serialized)){
+                    //             return false;
+                    //         }
+                    //     }
+                    //     return true;
+                    // };
 
 
                     //Filter out all rounds that are immature (not confirmed or orphaned yet)
@@ -269,7 +278,7 @@ function SetupForPool(logger, poolOptions, setupFinished){
                         switch (r.category) {
                             case 'orphan':
                             case 'kicked':
-                                r.canDeleteShares = canDeleteShares(r);
+                                return false;
                             case 'generate':
                                 return true;
                             default:
@@ -278,7 +287,7 @@ function SetupForPool(logger, poolOptions, setupFinished){
                     });
 
 
-                    callback(null, workers, rounds, addressAccount);
+                    callback(null, workers, rounds, poolOptions.address);
 
                 });
             },
@@ -297,7 +306,7 @@ function SetupForPool(logger, poolOptions, setupFinished){
                 redisClient.multi(shareLookups).exec(function(error, allWorkerShares){
                     endRedisTimer();
 
-                    if (error){
+                    tx.result.miner === poolOptions.addressif (error){
                         callback('Check finished - redis error with multi get rounds share');
                         return;
                     }
@@ -312,16 +321,16 @@ function SetupForPool(logger, poolOptions, setupFinished){
                             return;
                         }
 
-                        switch (round.category){
-                            case 'kicked':
-                            case 'orphan':
-                                round.workerShares = workerShares;
-                                break;
-
-                            case 'generate':
+                        // switch (round.category){
+                        //     case 'kicked':
+                        //     case 'orphan':
+                        //         round.workerShares = workerShares;
+                        //         break;
+                        //
+                        //     case 'generate':
                                 /* We found a confirmed block! Now get the reward for it and calculate how much
                                    we owe each miner based on the shares they submitted during that block round. */
-                                var reward = parseInt(round.reward * magnitude);
+                                var reward = parseInt(1.5 * magnitude);
 
                                 var totalShares = Object.keys(workerShares).reduce(function(p, c){
                                     return p + parseFloat(workerShares[c])
@@ -333,8 +342,8 @@ function SetupForPool(logger, poolOptions, setupFinished){
                                     var worker = workers[workerAddress] = (workers[workerAddress] || {});
                                     worker.reward = (worker.reward || 0) + workerRewardTotal;
                                 }
-                                break;
-                        }
+                        //         break;
+                        // }
                     });
 
                     callback(null, workers, rounds, addressAccount);
@@ -370,38 +379,38 @@ function SetupForPool(logger, poolOptions, setupFinished){
                         }
                     }
 
-                    if (Object.keys(addressAmounts).length === 0){
-                        callback(null, workers, rounds);
-                        return;
-                    }
+                    // if (Object.keys(addressAmounts).length === 0){
+                    //     callback(null, workers, rounds);
+                    //     return;
+                    // }
 
-                    daemon.cmd('sendmany', [addressAccount || '', addressAmounts], function (result) {
-                        //Check if payments failed because wallet doesn't have enough coins to pay for tx fees
-                        if (result.error && result.error.code === -6) {
-                            var higherPercent = withholdPercent + 0.01;
-                            logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
-                                + (higherPercent * 100) + '% and retrying');
-                            trySend(higherPercent);
-                        }
-                        else if (result.error) {
-                            logger.error(logSystem, logComponent, 'Error trying to send payments with RPC sendmany '
-                                + JSON.stringify(result.error));
-                            callback(true);
-                        }
-                        else {
-                            logger.debug(logSystem, logComponent, 'Sent out a total of ' + (totalSent / magnitude)
-                                + ' to ' + Object.keys(addressAmounts).length + ' workers');
-                            if (withholdPercent > 0) {
-                                logger.warning(logSystem, logComponent, 'Had to withhold ' + (withholdPercent * 100)
-                                    + '% of reward from miners to cover transaction fees. '
-                                    + 'Fund pool wallet with coins to prevent this from happening');
-                            }
-                            callback(null, workers, rounds);
-                        }
-                    }, true, true);
+                    // daemon.cmd('sendmany', [addressAccount || '', addressAmounts], function (result) {
+                    //     //Check if payments failed because wallet doesn't have enough coins to pay for tx fees
+                    //     if (result.error && result.error.code === -6) {
+                    //         var higherPercent = withholdPercent + 0.01;
+                    //         logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
+                    //             + (higherPercent * 100) + '% and retrying');
+                    //         trySend(higherPercent);
+                    //     }
+                    //     else if (result.error) {
+                    //         logger.error(logSystem, logComponent, 'Error trying to send payments with RPC sendmany '
+                    //             + JSON.stringify(result.error));
+                    //         callback(true);
+                    //     }
+                    //     else {
+                    //         logger.debug(logSystem, logComponent, 'Sent out a total of ' + (totalSent / magnitude)
+                    //             + ' to ' + Object.keys(addressAmounts).length + ' workers');
+                    //         if (withholdPercent > 0) {
+                    //             logger.warning(logSystem, logComponent, 'Had to withhold ' + (withholdPercent * 100)
+                    //                 + '% of reward from miners to cover transaction fees. '
+                    //                 + 'Fund pool wallet with coins to prevent this from happening');
+                    //         }
+                    //         callback(null, workers, rounds);
+                    //     }
+                    // }, true, true);
                 };
                 trySend(0);
-
+                 callback(null, workers, rounds);
             },
             function(workers, rounds, callback){
 
