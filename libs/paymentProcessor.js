@@ -83,7 +83,10 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     //we are using Wei as unit 100000000000000000 Wei = 1 AION
                     const response = JSON.parse(result.data);
                     let d = response.result;
+
+                    //TODO: to check if eth_getbalance always returns same length hex, otherwise this logic will break
                     magnitude = parseInt('10' + new Array(d.length).join('0'));
+
                     minPaymentWei = parseInt(processingConfig.minimumPayment * magnitude);
                     coinPrecision = magnitude.toString().length - 1;
                     callback();
