@@ -214,7 +214,7 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     blocksDetails.forEach(function (block, i) {
 
                         let round = rounds[i];
-                        //we have invalid block details returned, either from invalid hash or block has been mined
+                        //we have invalid block details returned, either from invalid hash or block has not been mined
                         if (!block.result.miner) {
                             round.category = 'kicked';
                             return;
