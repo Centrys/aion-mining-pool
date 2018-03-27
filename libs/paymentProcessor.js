@@ -214,8 +214,6 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                         return;
                     }
 
-                    let addressAccount = poolOptions.address;
-
                     blocksDetails.forEach(function (block, i) {
 
                         let round = rounds[i];
@@ -228,7 +226,10 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                         if (block.result.miner === poolOptions.address) {
                             round.category = 'generate';
                             round.reward = poolOptions.reward || 1.5;
+                        } else {
+                            round.category = 'kicked';
                         }
+
                     });
 
                     let canDeleteShares = function (r) {
@@ -258,14 +259,14 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                         }
                     });
 
-                    callback(null, workers, rounds, poolOptions.address);
+                    callback(null, workers, rounds);
                 });
             },
 
 
             /* Does a batch redis call to get shares contributed to each round. Then calculates the reward
                amount owned to each miner for each round. */
-            function (workers, rounds, addressAccount, callback) {
+            function (workers, rounds, callback) {
 
 
                 let shareLookups = rounds.map(function (r) {
@@ -315,7 +316,7 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                         }
                     });
 
-                    callback(null, workers, rounds, addressAccount);
+                    callback(null, workers, rounds);
                 });
             },
 
@@ -326,11 +327,13 @@ function SetupForPool(logger, poolOptions, setupFinished) {
              when deciding the sent balance, it the difference should be -1*amount they had in db,
              if not sending the balance, the differnce should be +(the amount they earned this round)
              */
-            function (workers, rounds, addressAccount, callback) {
+            function (workers, rounds, callback) {
 
                 let trySend = function (withholdPercent) {
+                    const poolAddress = poolOptions.address;
                     let addressAmounts = {};
                     let totalSent = 0;
+
                     for (let w in workers) {
                         let worker = workers[w];
                         worker.balance = worker.balance || 0;
@@ -355,16 +358,19 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     for (w in workers) {
                         let worker = workers[w];
 
-                        if (worker.address === addressAccount) {
+                        if (worker.address === poolAddress) {
                             logger.debug('Master', 'Payment processor', 'Pool has same address as worker, not sending reward');
                             continue;
                         }
-                        let payloadObj = {
-                            from: addressAccount,
+
+                        let transactionData = {
+                            from: poolAddress,
                             to: w,
                             value: worker.reward
                         };
-                        daemon.cmd('eth_sendTransaction', [payloadObj], function (result) {
+
+                        unlockAccountIfNecessary(poolAddress, poolOptions.addressPassword);
+                        daemon.cmd('eth_sendTransaction', [transactionData], function (result) {
                             if (result.error && result.error.code === -6) {
                                 let higherPercent = withholdPercent + 0.01;
                                 logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
@@ -505,5 +511,21 @@ function SetupForPool(logger, poolOptions, setupFinished) {
         else return address;
     };
 
+    let isLockedAccount = function(account, callback) {
+        return daemon.cmd('eth_sign', [account, ""], function(result) {
+            result[0].error ? callback(true) : callback(false);
+        })
+    };
 
+    let unlockAccountIfNecessary = function(account, password) {
+        isLockedAccount(account, function(isLocked) {
+            if (isLocked) {
+                daemon.cmd('personal_unlockAccount', [account, password], function (result) {
+                    if (result[0].error) {
+                        logger.warning(logSystem, logComponent, 'Unable to unlock pool\'s account');
+                    }
+                })
+            }
+        });
+    };
 }
