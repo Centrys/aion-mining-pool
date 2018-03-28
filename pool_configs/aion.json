@@ -9,7 +9,7 @@
 
     "__rewardRecipients": "total in percentage is the pool fee charged, (rewardRecipients[0] + rewardRecipients[1] + ...)%",
     "reward" : 1.5,
-    "addressPassword": "alin93",
+    "addressPassword": "passwordhere",
     "rewardRecipients": {
     },
 
