@@ -1,0 +1,7 @@
+{
+  "miner1": "0x6571d693c49ebe2e1407968a29420f642f44112f024bddfd6c1256edf227873f",
+  "miner1Threads": "2",
+  "miner2": "0xe93c6ba8243d8c1b55cb73d3d579beb675442666fbcda8b0554db84108c8fcc1",
+  "miner2Threads": "1",
+  "aionminerCpuLocation": "/home/alin/Workspace/aionminer-cpu"
+}

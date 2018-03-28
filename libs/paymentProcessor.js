@@ -201,8 +201,6 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     return ['eth_getBlockByNumber', [r.height, false]];
                 });
 
-                //batchRPCcommand.push(['getaccount', [poolOptions.address]]);
-
                 startRPCTimer();
                 daemon.batchCmd(batchRPCcommand, function (error, blocksDetails) {
                     endRPCTimer();
@@ -369,28 +367,33 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                             value: worker.reward
                         };
 
-                        unlockAccountIfNecessary(poolAddress, poolOptions.addressPassword);
-                        daemon.cmd('eth_sendTransaction', [transactionData], function (result) {
-                            if (result.error && result.error.code === -6) {
-                                let higherPercent = withholdPercent + 0.01;
-                                logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
-                                    + (higherPercent * 100) + '% and retrying');
-                                trySend(higherPercent);
-                            }
-                            else if (result.error) {
-                                logger.error(logSystem, logComponent, 'Error trying to send payments with RPC sendmany '
-                                    + JSON.stringify(result.error));
+                        unlockAccountIfNecessary(poolAddress, poolOptions.addressPassword, function (isUnlocked) {
+                            if (isUnlocked) {
+                                 daemon.cmd('eth_sendTransaction', [transactionData], function (result) {
+                                    if (result.error && result.error.code === -6) {
+                                        let higherPercent = withholdPercent + 0.01;
+                                        logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
+                                            + (higherPercent * 100) + '% and retrying');
+                                        trySend(higherPercent);
+                                    }
+                                    else if (result.error) {
+                                        logger.error(logSystem, logComponent, 'Error trying to send payments with RPC sendmany '
+                                            + JSON.stringify(result.error));
+                                        callback(true);
+                                    }
+                                    else {
+                                        logger.debug(logSystem, logComponent, 'Sent out a total of ' + (totalSent / magnitude)
+                                            + ' to ' + Object.keys(addressAmounts).length + ' workers');
+                                        if (withholdPercent > 0) {
+                                            logger.warning(logSystem, logComponent, 'Had to withhold ' + (withholdPercent * 100)
+                                                + '% of reward from miners to cover transaction fees. '
+                                                + 'Fund pool wallet with coins to prevent this from happening');
+                                        }
+                                        callback(null, workers, rounds);
+                                    }
+                                });
+                            } else {
                                 callback(true);
-                            }
-                            else {
-                                logger.debug(logSystem, logComponent, 'Sent out a total of ' + (totalSent / magnitude)
-                                    + ' to ' + Object.keys(addressAmounts).length + ' workers');
-                                if (withholdPercent > 0) {
-                                    logger.warning(logSystem, logComponent, 'Had to withhold ' + (withholdPercent * 100)
-                                        + '% of reward from miners to cover transaction fees. '
-                                        + 'Fund pool wallet with coins to prevent this from happening');
-                                }
-                                callback(null, workers, rounds);
                             }
                         });
                     }
@@ -517,14 +520,14 @@ function SetupForPool(logger, poolOptions, setupFinished) {
         })
     };
 
-    let unlockAccountIfNecessary = function(account, password) {
-        isLockedAccount(account, function(isLocked) {
+    let unlockAccountIfNecessary = function (account, password, callback) {
+        isLockedAccount(account, function (isLocked) {
             if (isLocked) {
                 daemon.cmd('personal_unlockAccount', [account, password], function (result) {
-                    if (result[0].error) {
-                        logger.warning(logSystem, logComponent, 'Unable to unlock pool\'s account');
-                    }
+                    result[0].error ? callback(false) : callback(true);
                 })
+            } else {
+                callback(true);
             }
         });
     };

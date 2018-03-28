@@ -35,7 +35,8 @@
         "nonce": "*",
         "redis": "*",
         "request": "*",
-        "stratum-pool": "file:local_modules/stratum-pool"
+        "stratum-pool": "file:local_modules/stratum-pool",
+        "aion-web3": "0.0.3"
     },
     "devDependencies": {
         "gulp": "^3.9.1",
@@ -44,6 +45,6 @@
         "moment": "*"
     },
     "scripts": {
-        "start": "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/node_modules/stratum-pool/node_modules/equihashverify/build/Release/:$PWD/node_modules/equihashverify/build/Release/ node init.js"
+        "start": "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/node_modules/stratum-pool/node_modules/equihashverify/build/Release/:$PWD/node_modules/equihashverify/build/Release/ node $NODE_DEBUG_OPTION init.js"
     }
 }

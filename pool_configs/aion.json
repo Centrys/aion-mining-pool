@@ -3,12 +3,13 @@
     "testnet": true,
     "coin": "aion.json",
     "logLevel": "debug",
-    "__address_aion":    "0x604076f02ab252f3927e6a8721e2a18526e08182fd7b476a8f054765a60803b6",
+    "__address_aion":    "0x6571d693c49ebe2e1407968a29420f642f44112f024bddfd6c1256edf227873f",
     "__address_bitcoin": "1AGRxqDa5WjUKBwHB9XYEjmkv1ucoUUy1s",
-    "address": "0x604076f02ab252f3927e6a8721e2a18526e08182fd7b476a8f054765a60803b6",
+    "address": "0x6571d693c49ebe2e1407968a29420f642f44112f024bddfd6c1256edf227873f",
 
     "__rewardRecipients": "total in percentage is the pool fee charged, (rewardRecipients[0] + rewardRecipients[1] + ...)%",
     "reward" : 1.5,
+    "addressPassword": "alin93",
     "rewardRecipients": {
     },
 
