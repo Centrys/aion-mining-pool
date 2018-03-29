@@ -2,12 +2,13 @@
     "enabled": true,
     "testnet": true,
     "coin": "aion.json",
-    
+    "logLevel": "debug",
     "address": "<pool_address>",
     "addressPassword": "<account_password>",
 
     "__rewardRecipients": "total in percentage is the pool fee charged, (rewardRecipients[0] + rewardRecipients[1] + ...)%",
     "reward" : 1.5,
+    "addressPassword": "passwordhere",
     "rewardRecipients": {
     },
 

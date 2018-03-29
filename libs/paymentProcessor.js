@@ -207,8 +207,6 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     return ['eth_getBlockByNumber', [r.height, false]];
                 });
 
-                //batchRPCcommand.push(['getaccount', [poolOptions.address]]);
-
                 startRPCTimer();
                 daemon.batchCmd(batchRPCcommand, function (error, blocksDetails) {
                     endRPCTimer();
