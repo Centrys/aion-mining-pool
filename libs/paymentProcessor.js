@@ -185,7 +185,7 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     });
 
                     // sort rounds by block height to pay in order
-                    rounds.sort(function(a, b) {
+                    rounds.sort(function (a, b) {
                         return a.height - b.height;
                     });
 
@@ -196,6 +196,12 @@ function SetupForPool(logger, poolOptions, setupFinished) {
             /* Does a batch rpc call to daemon with all the transaction hashes to see if they are confirmed yet.
                It also adds the block reward amount to the round object - which the daemon gives also gives us. */
             function (workers, rounds, callback) {
+                let lastBlockNumber;
+                daemon.cmd('eth_getBlockByNumber', ["latest"], function (result) {
+                    if (result[0].response) {
+                        lastBlockNumber = result[0].response.number;
+                    }
+                });
 
                 let batchRPCcommand = rounds.map(function (r) {
                     return ['eth_getBlockByNumber', [r.height, false]];
@@ -213,7 +219,6 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                     }
 
                     blocksDetails.forEach(function (block, i) {
-
                         let round = rounds[i];
                         //we have invalid block details returned, either from invalid hash or block has not been mined
                         if (!block.result.miner) {
@@ -226,6 +231,10 @@ function SetupForPool(logger, poolOptions, setupFinished) {
                             round.reward = poolOptions.reward || 1.5;
                         } else {
                             round.category = 'kicked';
+                        }
+
+                        if (round.category === 'generate' && !isConfirmedBlock(block, lastBlockNumber)) {
+                            round.category = 'immature'
                         }
 
                     });
@@ -369,7 +378,7 @@ function SetupForPool(logger, poolOptions, setupFinished) {
 
                         unlockAccountIfNecessary(poolAddress, poolOptions.addressPassword, function (isUnlocked) {
                             if (isUnlocked) {
-                                 daemon.cmd('eth_sendTransaction', [transactionData], function (result) {
+                                daemon.cmd('eth_sendTransaction', [transactionData], function (result) {
                                     if (result.error && result.error.code === -6) {
                                         let higherPercent = withholdPercent + 0.01;
                                         logger.warning(logSystem, logComponent, 'Not enough funds to cover the tx fees for sending out payments, decreasing rewards by '
@@ -514,8 +523,8 @@ function SetupForPool(logger, poolOptions, setupFinished) {
         else return address;
     };
 
-    let isLockedAccount = function(account, callback) {
-        return daemon.cmd('eth_sign', [account, ""], function(result) {
+    let isLockedAccount = function (account, callback) {
+        return daemon.cmd('eth_sign', [account, ""], function (result) {
             result[0].error ? callback(true) : callback(false);
         })
     };
@@ -531,4 +540,8 @@ function SetupForPool(logger, poolOptions, setupFinished) {
             }
         });
     };
+
+    let isConfirmedBlock = function (block, lastBlockNumber) {
+        return (lastBlockNumber - block.result.number) >= poolOptions.paymentProcessing.minimumConfirmationsShield;
+    }
 }
